@@ -54,6 +54,8 @@ app.post(
         artist: req.body.artist,
         audioUrl: audioUpload.secure_url,
         coverUrl: coverUpload.secure_url,
+        audioPublicId: audioUpload.public_id,
+        coverPublicId: coverUpload.public_id,
       });
 
       const savedSong = await newSong.save();
@@ -97,7 +99,23 @@ app.get("/test-cloudinary", async (req, res) => {
 // 1. DELETE
 app.delete("/songs/:id", async (req, res) => {
   try {
+    const song = await Song.findById(req.params.id);
+
+    if (!song) {
+      return res.status(404).json({ error: "Song not found" });
+    }
+
+    // Delete from Cloudinary
+    await cloudinary.uploader.destroy(song.audioPublicId, {
+      resource_type: "video",
+    });
+
+    await cloudinary.uploader.destroy(song.coverPublicId);
+
+    // Delete from DB
     await Song.findByIdAndDelete(req.params.id);
+
+    res.json({ message: "Song deleted from DB + Cloudinary ✅" });
     res.json({ message: "Song deleted ✅" });
   } catch (err) {
     res.status(500).send(err);
