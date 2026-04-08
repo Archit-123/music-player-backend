@@ -5,6 +5,8 @@ const songSchema = new mongoose.Schema({
   artist: String,
   audioUrl: String,
   coverUrl: String,
+  audioPublicId: String,
+  coverPublicId: String,
 });
 
 module.exports = mongoose.model("Song", songSchema);

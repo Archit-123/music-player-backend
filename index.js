@@ -105,22 +105,25 @@ app.delete("/songs/:id", async (req, res) => {
       return res.status(404).json({ error: "Song not found" });
     }
 
-    // Delete from Cloudinary
-    await cloudinary.uploader.destroy(song.audioPublicId, {
-      resource_type: "video",
-    });
+    if (song.audioPublicId) {
+      await cloudinary.uploader.destroy(song.audioPublicId, {
+        resource_type: "video",
+      });
+    }
 
-    await cloudinary.uploader.destroy(song.coverPublicId);
+    if (song.coverPublicId) {
+      await cloudinary.uploader.destroy(song.coverPublicId);
+    }
 
-    // Delete from DB
     await Song.findByIdAndDelete(req.params.id);
 
     res.json({ message: "Song deleted from DB + Cloudinary ✅" });
-    res.json({ message: "Song deleted ✅" });
   } catch (err) {
-    res.status(500).send(err);
+    console.log("DELETE ERROR:", err);
+    res.status(500).json({ error: err.message });
   }
 });
+
 // 2.Update
 app.put("/songs/:id", async (req, res) => {
   try {
