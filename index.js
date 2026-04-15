@@ -1,9 +1,9 @@
-const { exec } = require("child_process");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 require("dotenv").config();
+const { spawn } = require("child_process");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,7 +22,10 @@ cloudinary.config({
 
 app.use(
   cors({
-    origin: "*",
+    origin: [
+      "http://localhost:3000",
+      "https://music-player-frontend-ten.vercel.app",
+    ],
   }),
 );
 
@@ -37,6 +40,9 @@ app.post(
   ]),
   async (req, res) => {
     try {
+      if (!req.files || !req.files.audio || !req.files.cover) {
+        return res.status(400).json({ error: "Files missing" });
+      }
       const audioFile = req.files.audio[0];
       const coverFile = req.files.cover[0];
 
@@ -60,6 +66,8 @@ app.post(
 
       const savedSong = await newSong.save();
       console.log("✅ SAVED TO DB:", savedSong);
+      if (audioFile?.path) fs.unlinkSync(audioFile.path);
+      if (coverFile?.path) fs.unlinkSync(coverFile.path);
 
       res.json(newSong);
     } catch (err) {
@@ -146,7 +154,10 @@ app.put("/songs/:id", async (req, res) => {
 // 3. Get
 app.get("/songs", async (req, res) => {
   try {
-    const songs = await Song.find();
+    const page = parseInt(req.query.page) || 0;
+    const songs = await Song.find()
+      .limit(20)
+      .skip(page * 20);
     res.json(songs);
   } catch (err) {
     res.status(500).send(err);
@@ -204,19 +215,21 @@ app.post("/youtube-import", async (req, res) => {
       return res.status(400).json({ error: "URL is required" });
     }
 
-    // Run Python script
-    exec(`python songdata.py "${url}"`, (error, stdout, stderr) => {
-      if (error) {
-        console.error("❌ Python Error:", error);
-        return res.status(500).json({ error: "Python script failed" });
+    const process = spawn("python", ["songdata.py", url]);
+    let responded = false;
+
+    process.stderr.on("data", (data) => {
+      if (!responded) {
+        responded = true;
+        console.error(`Error: ${data}`);
+        return res.status(500).json({ error: data.toString() });
       }
+    });
 
-      console.log("✅ Python Output:", stdout);
-
-      res.json({
-        message: "Import started successfully 🚀",
-        output: stdout,
-      });
+    process.on("close", (code) => {
+      if (!responded) {
+        res.json({ message: "Import completed", code });
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
