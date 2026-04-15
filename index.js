@@ -25,6 +25,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "https://music-player-frontend-ten.vercel.app",
+      "https://architmusic.in",
     ],
   }),
 );
