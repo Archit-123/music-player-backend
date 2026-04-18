@@ -22,21 +22,27 @@ UPLOAD_URL = os.getenv("UPLOAD_URL", "http://127.0.0.1:5000/upload")
 def process_video(url):
     try:
         ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': 'downloads/%(title).50s.%(ext)s',
-            'writethumbnail': True,
-            'postprocessors': [
-                {
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                },
-                {
-                    'key': 'FFmpegMetadata'
-                }
-            ],
-            'quiet': True
+    'format': 'bestaudio/best',
+    'cookiefile': 'cookies.txt',
+    'outtmpl': 'downloads/%(title).50s.%(ext)s',
+    'writethumbnail': True,
+    'quiet': True,
+    'http_headers': {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36'
+    },
+    'sleep_interval': 2,
+    'max_sleep_interval': 5,
+    'postprocessors': [
+        {
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        },
+        {
+            'key': 'FFmpegMetadata'
         }
+    ]
+}
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
