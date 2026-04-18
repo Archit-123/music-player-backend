@@ -1,4 +1,4 @@
-
+print("🔥 PYTHON SCRIPT STARTED")
 import yt_dlp
 import requests
 import os
