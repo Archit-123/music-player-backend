@@ -156,54 +156,26 @@ app.put("/songs/:id", async (req, res) => {
 app.get("/songs", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 0;
+    const limit = parseInt(req.query.limit) || 20;
+
     const songs = await Song.find()
-      .limit(20)
-      .skip(page * 20);
+      .sort({ _id: -1 }) // newest first
+      .skip(page * limit)
+      .limit(limit);
+
     res.json(songs);
   } catch (err) {
     res.status(500).send(err);
   }
 });
 
-// 🎧 STREAMING ROUTE
-app.get("/stream/:filename", (req, res) => {
-  const filePath = path.join(__dirname, "music", req.params.filename);
-
-  // Check if file exists
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).send("File not found");
-  }
-
-  const stat = fs.statSync(filePath);
-  const fileSize = stat.size;
-  const range = req.headers.range;
-
-  if (!range) {
-    // No range → send full file
-    res.writeHead(200, {
-      "Content-Length": fileSize,
-      "Content-Type": "audio/mpeg",
-    });
-
-    fs.createReadStream(filePath).pipe(res);
-  } else {
-    // Parse range
-    const parts = range.replace(/bytes=/, "").split("-");
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-    const chunkSize = end - start + 1;
-
-    const file = fs.createReadStream(filePath, { start, end });
-
-    res.writeHead(206, {
-      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-      "Accept-Ranges": "bytes",
-      "Content-Length": chunkSize,
-      "Content-Type": "audio/mpeg",
-    });
-
-    file.pipe(res);
+// for admin to fetch all songs length
+app.get("/songscount", async (req, res) => {
+  try {
+    const songs = await Song.find().sort({ _id: -1 });
+    res.json(songs);
+  } catch (error) {
+    res.status(500).send(error);
   }
 });
 
@@ -216,20 +188,28 @@ app.post("/youtube-import", async (req, res) => {
       return res.status(400).json({ error: "URL is required" });
     }
 
-    const process = spawn("python", ["songdata.py", url]);
-    let responded = false;
+    console.log("Incoming URL:", url);
+
+    const process = spawn("python", [
+      require("path").join(__dirname, "songdata.py"),
+      url,
+    ]);
+
+    process.stdout.on("data", (data) => {
+      console.log("PYTHON:", data.toString());
+    });
 
     process.stderr.on("data", (data) => {
-      if (!responded) {
-        responded = true;
-        console.error(`Error: ${data}`);
-        return res.status(500).json({ error: data.toString() });
-      }
+      console.error("PYTHON ERROR:", data.toString());
     });
 
     process.on("close", (code) => {
-      if (!responded) {
-        res.json({ message: "Import completed", code });
+      console.log("Python exited with code:", code);
+
+      if (code === 0) {
+        res.json({ message: "Import completed" });
+      } else {
+        res.status(500).json({ error: "Python process failed" });
       }
     });
   } catch (err) {
