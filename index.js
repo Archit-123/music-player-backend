@@ -13,6 +13,7 @@ const upload = multer({ dest: "uploads/" });
 const cloudinary = require("cloudinary").v2;
 const mongoose = require("mongoose");
 const Song = require("./models/Song");
+const Playlist = require("./models/Playlist");
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -33,6 +34,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Upload songs to cloudinary and Mongo
 app.post(
   "/upload",
   upload.fields([
@@ -83,11 +85,117 @@ app.post(
   },
 );
 
+// Add song to playlist
+app.put("/playlists/:playlistId/add-song", async (req, res) => {
+  try {
+    const { songId } = req.body;
+
+    const playlist = await Playlist.findById(req.params.playlistId);
+
+    if (!playlist) return res.status(404).send("Playlist not found");
+
+    if (!playlist.songs.some((id) => id.toString() === songId)) {
+      playlist.songs.push(songId);
+      await playlist.save();
+    }
+
+    const updated = await Playlist.findById(playlist._id).populate("songs");
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+// Remove song from playlist
+app.put("/playlists/:playlistId/remove-song", async (req, res) => {
+  try {
+    const { songId } = req.body;
+
+    const playlist = await Playlist.findById(req.params.playlistId);
+
+    if (!playlist) return res.status(404).send("Playlist not found");
+
+    playlist.songs = playlist.songs.filter((id) => id.toString() !== songId);
+
+    await playlist.save();
+
+    const updated = await Playlist.findById(playlist._id).populate("songs");
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
 // MOngoDB connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.log(err));
+
+// POST /playlists
+app.post("/playlists", async (req, res) => {
+  try {
+    const { name, createdBy } = req.body;
+
+    // manual validation
+    if (!name || !createdBy) {
+      return res.status(400).json({
+        error: "Name and CreatedBy are required",
+      });
+    }
+
+    const playlist = new Playlist({
+      name,
+      createdBy,
+      songs: [],
+    });
+
+    await playlist.save();
+
+    const updated = await Playlist.findById(playlist._id).populate("songs");
+    res.json(updated);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+// Get Playlist
+app.get("/playlists", async (req, res) => {
+  try {
+    const playlists = await Playlist.find()
+      .populate("songs")
+      .sort({ createdAt: -1 });
+    res.json(playlists);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+// Put PLaylist
+app.put("/playlists/:id", async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    const updated = await Playlist.findByIdAndUpdate(
+      req.params.id,
+      { name },
+      { new: true },
+    );
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+// Delete Playlist
+app.delete("/playlists/:id", async (req, res) => {
+  try {
+    await Playlist.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
 
 // Cloudinary
 app.get("/test-cloudinary", async (req, res) => {
@@ -105,7 +213,7 @@ app.get("/test-cloudinary", async (req, res) => {
 
 // SOngs CRUD
 
-// 1. DELETE
+// 1. DELETE songs
 app.delete("/songs/:id", async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
@@ -133,7 +241,7 @@ app.delete("/songs/:id", async (req, res) => {
   }
 });
 
-// 2.Update
+// 2.Update songs in admin
 app.put("/songs/:id", async (req, res) => {
   try {
     const updated = await Song.findByIdAndUpdate(
@@ -152,7 +260,7 @@ app.put("/songs/:id", async (req, res) => {
   }
 });
 
-// 3. Get
+// 3. Get songs
 app.get("/songs", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 0;
