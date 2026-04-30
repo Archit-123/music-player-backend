@@ -325,6 +325,10 @@ app.post("/youtube-import", async (req, res) => {
   }
 });
 
+//keep system awake/up
+app.get("/health", (req, res) => {
+  res.send("OK");
+});
 // Test route
 app.get("/", (req, res) => {
   res.send("Streaming server running 🎵");
