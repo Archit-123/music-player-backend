@@ -29,6 +29,7 @@ app.use(
         "https://architmusic.in",
         "https://www.architmusic.in",
         "https://music-player-frontend-ten.vercel.app",
+        "https://music-player-frontend-f3viqd1x2-archit-123s-projects.vercel.app",
       ];
 
       if (!origin || allowed.includes(origin)) {
