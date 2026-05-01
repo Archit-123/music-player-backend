@@ -23,12 +23,21 @@ cloudinary.config({
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://music-player-frontend-ten.vercel.app",
-      "https://architmusic.in",
-      "https://api.architmusic.in",
-    ],
+    origin: (origin, callback) => {
+      const allowed = [
+        "http://localhost:3000",
+        "https://architmusic.in",
+        "https://www.architmusic.in",
+        "https://music-player-frontend-ten.vercel.app",
+      ];
+
+      if (!origin || allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
   }),
 );
 
