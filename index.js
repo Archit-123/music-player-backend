@@ -21,18 +21,35 @@ cloudinary.config({
   api_secret: process.env.API_SECRET,
 });
 
+// app.use(
+//   cors({
+//     origin: (origin, callback) => {
+//       const allowed = [
+//         "http://localhost:3000",
+//         "https://architmusic.in",
+//         "https://www.architmusic.in",
+//         "https://music-player-frontend-ten.vercel.app",
+//         "https://music-player-frontend-f3viqd1x2-archit-123s-projects.vercel.app",
+//       ];
+
+//       if (!origin || allowed.includes(origin)) {
+//         callback(null, true);
+//       } else {
+//         callback(new Error("Not allowed by CORS"));
+//       }
+//     },
+//     credentials: true,
+//   }),
+// );
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowed = [
-        "http://localhost:3000",
-        "https://architmusic.in",
-        "https://www.architmusic.in",
-        "https://music-player-frontend-ten.vercel.app",
-        "https://music-player-frontend-f3viqd1x2-archit-123s-projects.vercel.app",
-      ];
-
-      if (!origin || allowed.includes(origin)) {
+      if (
+        !origin ||
+        origin.includes("vercel.app") ||
+        origin.includes("architmusic.in") ||
+        origin.includes("localhost")
+      ) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
@@ -41,7 +58,6 @@ app.use(
     credentials: true,
   }),
 );
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
